@@ -8,25 +8,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.personalaccountant.data.repository.FinanceRepository
 import com.example.personalaccountant.ui.components.BottomNavigationBar
 import com.example.personalaccountant.ui.viewmodel.CreditCardViewModel
-import com.example.personalaccountant.ui.viewmodel.CreditCardViewModelFactory
 import com.example.personalaccountant.ui.viewmodel.DashboardViewModel
-import com.example.personalaccountant.ui.viewmodel.DashboardViewModelFactory
 import com.example.personalaccountant.ui.viewmodel.FixedTransactionViewModel
-import com.example.personalaccountant.ui.viewmodel.FixedTransactionViewModelFactory
 import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
-import com.example.personalaccountant.ui.viewmodel.TransactionViewModelFactory
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainPagerScreen(
     navController: NavController,
-    repository: FinanceRepository,
     initialPage: Int = 0
 ) {
     val pagerState = rememberPagerState(
@@ -61,35 +55,26 @@ fun MainPagerScreen(
                 }
             )
         }
-    ) { paddingValues ->
+    ) { _ ->
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondBoundsPageCount = 1 // Pre-load adjacent pages
+            modifier = Modifier.fillMaxSize()
         ) { page ->
             when (page) {
                 0 -> {
-                    val viewModel: DashboardViewModel = viewModel(
-                        factory = DashboardViewModelFactory(repository)
-                    )
+                    val viewModel: DashboardViewModel = hiltViewModel()
                     DashboardScreen(navController, viewModel)
                 }
                 1 -> {
-                    val viewModel: CreditCardViewModel = viewModel(
-                        factory = CreditCardViewModelFactory(repository)
-                    )
+                    val viewModel: CreditCardViewModel = hiltViewModel()
                     CreditCardScreen(navController, viewModel)
                 }
                 2 -> {
-                    val viewModel: FixedTransactionViewModel = viewModel(
-                        factory = FixedTransactionViewModelFactory(repository)
-                    )
+                    val viewModel: FixedTransactionViewModel = hiltViewModel()
                     FixedPaymentsScreen(navController, viewModel)
                 }
                 3 -> {
-                    val viewModel: TransactionViewModel = viewModel(
-                        factory = TransactionViewModelFactory(repository)
-                    )
+                    val viewModel: TransactionViewModel = hiltViewModel()
                     TransactionHistoryScreen(navController, viewModel)
                 }
             }

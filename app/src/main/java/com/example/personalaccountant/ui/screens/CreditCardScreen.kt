@@ -1,11 +1,15 @@
 package com.example.personalaccountant.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,18 +20,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import com.example.personalaccountant.utils.formatCurrency
-import com.example.personalaccountant.utils.formatCurrencyWithSymbol
-import com.example.personalaccountant.utils.formatDate
-import com.example.personalaccountant.utils.formatDateShort
-import com.example.personalaccountant.ui.components.ConfirmationDialog
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,40 +37,62 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.personalaccountant.R
 import com.example.personalaccountant.data.CreditCardCharge
 import com.example.personalaccountant.ui.components.BottomNavigationBar
+import com.example.personalaccountant.ui.components.ConfirmationDialog
+import com.example.personalaccountant.ui.components.EmptyStateView
 import com.example.personalaccountant.ui.theme.BorderGray
+import com.example.personalaccountant.ui.theme.ExpenseRed
+import com.example.personalaccountant.ui.theme.IncomeGreen
+import com.example.personalaccountant.ui.viewmodel.CreditCardUiEvent
 import com.example.personalaccountant.ui.viewmodel.CreditCardViewModel
+import com.example.personalaccountant.utils.formatCurrency
+import com.example.personalaccountant.utils.formatCurrencyWithSymbol
+import com.example.personalaccountant.utils.formatDate
+import com.example.personalaccountant.utils.formatDateShort
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -79,16 +103,36 @@ fun CreditCardScreen(
     navController: NavController,
     viewModel: CreditCardViewModel
 ) {
-    val allCharges by viewModel.allCharges.collectAsState()
-    val totalPendingBalance by viewModel.totalPendingBalance.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
+    val allCharges by viewModel.allCharges.collectAsStateWithLifecycle()
+    val totalPendingBalance by viewModel.totalPendingBalance.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     var showAddChargeDialog by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
     var showEditChargeDialog by remember { mutableStateOf(false) }
     var editingCharge by remember { mutableStateOf<CreditCardCharge?>(null) }
     var chargeToDelete by remember { mutableStateOf<CreditCardCharge?>(null) }
     
+    // Handle UI Events
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is CreditCardUiEvent.ShowSnackbar -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = event.message,
+                        actionLabel = if (event.deletedCharge != null) "Deshacer" else null
+                    )
+                    if (result == SnackbarResult.ActionPerformed && event.deletedCharge != null) {
+                        viewModel.undoDeleteCharge(event.deletedCharge)
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -106,50 +150,65 @@ fun CreditCardScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White
                 )
             )
         },
         bottomBar = {
             BottomNavigationBar(navController, "credit_card")
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Total Balance Card (in RED)
+            // Premium Debt Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFEBEE) // Light red background
-                    ),
-                    border = BorderStroke(2.dp, Color(0xFFD32F2F)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                                    )
+                                )
+                            )
+                            .padding(24.dp)
                     ) {
-                        Text(
-                            text = "Saldo Total por Pagar",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFFD32F2F),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = formatCurrencyWithSymbol(totalPendingBalance),
-                            style = MaterialTheme.typography.displayLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFD32F2F) // Red
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Icon(
+                                imageVector = Icons.Default.CreditCard,
+                                contentDescription = null,
+                                tint = ExpenseRed,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Deuda Total",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = formatCurrencyWithSymbol(totalPendingBalance),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Black,
+                                color = ExpenseRed
+                            )
+                        }
                     }
                 }
             }
@@ -162,23 +221,24 @@ fun CreditCardScreen(
                 ) {
                     Button(
                         onClick = { showPaymentDialog = true },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Hacer Pago")
+                        Text("Abonar", fontWeight = FontWeight.Bold)
                     }
                     
                     OutlinedButton(
                         onClick = { showAddChargeDialog = true },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Agregar Cargo")
+                        Text("Nuevo Cargo", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -186,9 +246,9 @@ fun CreditCardScreen(
             // Charges Header
             item {
                 Text(
-                    text = "Cargos de Tarjeta",
+                    text = "Cargos Pendientes",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -196,25 +256,54 @@ fun CreditCardScreen(
             // Charges List
             if (allCharges.isEmpty()) {
                 item {
-                    Text(
-                        text = "No hay cargos registrados",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(vertical = 16.dp)
+                    EmptyStateView(
+                        title = "Sin deudas",
+                        subtitle = "Tus tarjetas están al día",
+                        modifier = Modifier.padding(top = 32.dp)
                     )
                 }
             } else {
-                items(allCharges) { charge ->
-                    CreditCardChargeItem(
-                        charge = charge,
-                        onEdit = { 
-                            editingCharge = charge
-                            showEditChargeDialog = true
+                items(
+                    items = allCharges,
+                    key = { it.id }
+                ) { charge ->
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.EndToStart) {
+                                viewModel.deleteCharge(charge)
+                                true
+                            } else false
+                        }
+                    )
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(ExpenseRed)
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.White)
+                            }
                         },
-                        onDelete = { chargeToDelete = charge }
+                        content = {
+                            CreditCardChargeItem(
+                                charge = charge,
+                                onEdit = { 
+                                    editingCharge = charge
+                                    showEditChargeDialog = true
+                                }
+                            )
+                        }
                     )
                 }
             }
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
     
@@ -281,120 +370,76 @@ fun CreditCardScreen(
 @Composable
 fun CreditCardChargeItem(
     charge: CreditCardCharge,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onEdit: () -> Unit
 ) {
     val isPaid = charge.status == "PAID"
-    
-    // Status colors
-    val backgroundColor = if (isPaid) Color(0xFFC8E6C9) else Color(0xFFFFF9C4) // Green or Yellow
-    val textColor = if (isPaid) Color(0xFF2E7D32) else Color(0xFFF57C00) // Dark green or Orange
-    val statusText = if (isPaid) "PAGADO" else "PENDIENTE"
+    val statusColor = if (isPaid) IncomeGreen else Color(0xFFF57C00)
+    val containerColor = if (isPaid) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        border = BorderStroke(1.dp, textColor.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth().clickable { onEdit() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = charge.description,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Compra: ${formatDate(charge.purchaseDate)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = textColor.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = "Pago límite: ${formatDate(charge.paymentDueDate)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = textColor.copy(alpha = 0.8f)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Info, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Límite: ${formatDate(charge.paymentDueDate)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
                 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = formatCurrencyWithSymbol(charge.amount),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isPaid) IncomeGreen else ExpenseRed
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
-                            .background(textColor, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(statusColor.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = statusText,
+                            text = if (isPaid) "PAGADO" else "PENDIENTE",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            color = statusColor,
+                            fontWeight = FontWeight.Black
                         )
                     }
                 }
             }
             
-            // Show payment progress if partially paid
             if (!isPaid && charge.paidAmount > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Pagado: ${formatCurrencyWithSymbol(charge.paidAmount)} / ${formatCurrencyWithSymbol(charge.amount)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = textColor.copy(alpha = 0.7f)
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    progress = (charge.paidAmount / charge.amount).toFloat(),
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                    color = statusColor,
+                    trackColor = statusColor.copy(alpha = 0.1f)
                 )
-            }
-            
-            // Billing cycle info
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Ciclo: ${formatDateShort(charge.billingCycleStart)} - ${formatDateShort(charge.billingCycleEnd)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = textColor.copy(alpha = 0.6f)
-            )
-            
-            // Edit and Delete buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    onClick = onEdit,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Editar", style = MaterialTheme.typography.labelSmall)
-                }
-                TextButton(
-                    onClick = onDelete,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFFD32F2F)
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Eliminar", style = MaterialTheme.typography.labelSmall)
-                }
+                Text(
+                    text = "Abonado: ${formatCurrencyWithSymbol(charge.paidAmount)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = statusColor
+                )
             }
         }
     }

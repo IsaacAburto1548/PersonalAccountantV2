@@ -1,11 +1,16 @@
 package com.example.personalaccountant.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,39 +20,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.personalaccountant.R
+import com.example.personalaccountant.data.Transaction
 import com.example.personalaccountant.ui.components.BottomNavigationBar
+import com.example.personalaccountant.ui.components.EmptyStateView
 import com.example.personalaccountant.ui.theme.ExpenseRed
 import com.example.personalaccountant.ui.theme.IncomeGreen
+import com.example.personalaccountant.ui.viewmodel.TransactionUiEvent
 import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
 import com.example.personalaccountant.utils.formatCurrencyWithSymbol
 import com.example.personalaccountant.utils.formatDate
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -59,236 +62,280 @@ fun TransactionHistoryScreen(
     navController: NavController,
     viewModel: TransactionViewModel
 ) {
-    val allTransactions by viewModel.transactions.collectAsState()
-    
-    // Filter transactions for current month
-    val calendar = Calendar.getInstance()
-    val currentMonth = calendar.get(Calendar.MONTH)
-    val currentYear = calendar.get(Calendar.YEAR)
-    
-    val monthTransactions = allTransactions.filter { transaction ->
-        val transactionCalendar = Calendar.getInstance()
-        transactionCalendar.timeInMillis = transaction.date
-        transactionCalendar.get(Calendar.MONTH) == currentMonth &&
-        transactionCalendar.get(Calendar.YEAR) == currentYear
-    }.sortedBy { it.date } // Oldest first
+    val allTransactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
 
-    // Calculate totals
-    val totalIngresos = monthTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
-    val totalGastos = monthTransactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
-    val totalCreditPayments = monthTransactions.filter { it.type == "CREDIT_PAYMENT" }.sumOf { it.amount }
-    val balance = totalIngresos - totalGastos - totalCreditPayments
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
+
+    // Handle UI Events (Delete/Undo)
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is TransactionUiEvent.ShowSnackbar -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = event.message,
+                        actionLabel = if (event.deletedTx != null) "Deshacer" else null
+                    )
+                    if (result == SnackbarResult.ActionPerformed && event.deletedTx != null) {
+                        viewModel.undoDeleteTransaction(event.deletedTx)
+                    }
+                }
+            }
+        }
+    }
+
+    // Month Selector Data
+    val months = remember {
+        val list = mutableListOf<Pair<Int, Int>>()
+        val cal = Calendar.getInstance()
+        // Last 12 months
+        for (i in 0 until 12) {
+            list.add(Pair(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR)))
+            cal.add(Calendar.MONTH, -1)
+        }
+        list
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo_financify),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(50.dp)
-                        )
-                        Text("Historial", color = Color.White, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.primary)) {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo_financify),
+                                contentDescription = "Logo",
+                                modifier = Modifier.size(50.dp)
+                            )
+                            Text("Historial", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = Color.White
+                    ),
+                    actions = {
+                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = Color.White)
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
+                )
 
-            )
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    placeholder = { Text("Buscar transacción...", color = Color.White.copy(alpha = 0.7f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.White,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        cursorColor = Color.White,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    singleLine = true
+                )
+
+                // Month Chip Selector
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedMonth == null,
+                            onClick = { viewModel.clearMonthFilter() },
+                            label = { Text("Todo") },
+                            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color.White,
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                    items(months) { month ->
+                        val isSelected = selectedMonth?.first == month.first && selectedMonth?.second == month.second
+                        val cal = Calendar.getInstance().apply {
+                            set(Calendar.MONTH, month.first)
+                            set(Calendar.YEAR, month.second)
+                        }
+                        val name = SimpleDateFormat("MMM yy", Locale("es", "ES")).format(cal.time)
+                        
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.setSelectedMonth(month.first, month.second) },
+                            label = { Text(name.capitalize()) },
+                            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color.White,
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            }
         },
         bottomBar = {
             BottomNavigationBar(navController, "transaction_history")
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Month Header
-            item {
-                Text(
-                    text = SimpleDateFormat("MMMM yyyy", Locale("es", "ES")).format(Date()),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
-            }
-
-            // Transactions Header
-            item {
-                Text(
-                    text = "Transacciones (${monthTransactions.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            // Transactions List
-            if (monthTransactions.isEmpty()) {
+            if (allTransactions.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "📊",
-                                fontSize = 48.sp
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No hay transacciones este mes",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.Gray
-                            )
-                        }
-                    }
+                    EmptyStateView(
+                        title = "No hay transacciones",
+                        subtitle = if (searchQuery.isNotEmpty()) "Prueba con otra búsqueda" else "Empieza agregando tus gastos",
+                        modifier = Modifier.padding(top = 64.dp)
+                    )
                 }
             } else {
-                items(monthTransactions) { transaction ->
-                    TransactionCard(transaction = transaction)
-                }
-            }
-            
-            // Summary at bottom
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Text(
-                            text = "Resumen del Mes",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        
-                        // Ingresos
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = formatCurrencyWithSymbol(totalIngresos),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = IncomeGreen
-                            )
+                items(
+                    items = allTransactions,
+                    key = { it.id }
+                ) { transaction ->
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.EndToStart) {
+                                transactionToDelete = transaction
+                                true
+                            } else {
+                                false
+                            }
                         }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Gastos
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "- ${formatCurrencyWithSymbol(totalGastos)}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = ExpenseRed
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Abonos Tarjeta de Crédito
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Abonos Tarjeta de Crédito",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "- ${formatCurrencyWithSymbol(totalCreditPayments)}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF9C27B0)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Divider(thickness = 2.dp, color = Color.Gray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Balance o Saldo Disponible
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Balance o Saldo Disponible",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = formatCurrencyWithSymbol(balance),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (balance >= 0) IncomeGreen else ExpenseRed
-                            )
+                    )
+
+                    LaunchedEffect(dismissState.currentValue) {
+                        if (dismissState.currentValue == SwipeToDismissBoxValue.Settled && transactionToDelete != null) {
+                            viewModel.deleteTransaction(transactionToDelete!!)
+                            transactionToDelete = null // Reset after deletion
                         }
                     }
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            val color = when (dismissState.dismissDirection) {
+                                SwipeToDismissBoxValue.EndToStart -> ExpenseRed
+                                else -> Color.Transparent
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(color)
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Eliminar",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        content = {
+                            TransactionCard(
+                                transaction = transaction,
+                                onClick = {
+                                    navController.navigate("add_transaction?transactionId=${transaction.id}")
+                                }
+                            )
+                        }
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Summary section only if month is selected
+                if (selectedMonth != null && allTransactions.isNotEmpty()) {
+                    item {
+                        val income = allTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
+                        val expense = allTransactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+                        val credit = allTransactions.filter { it.type == "CREDIT_PAYMENT" }.sumOf { it.amount }
+                        val balance = income - expense - credit
+
+                        TransactionSummaryCard(income, expense, credit, balance)
+                    }
+                }
+            }
+            item { Spacer(modifier = Modifier.height(32.dp)) }
+        }
+    }
+}
+
+@Composable
+fun TransactionSummaryCard(income: Double, expense: Double, credit: Double, balance: Double) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Resumen del Periodo", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(12.dp))
+            SummaryRow("Ingresos", income, IncomeGreen)
+            SummaryRow("Gastos", -expense, ExpenseRed)
+            SummaryRow("Abonos TC", -credit, Color(0xFF9C27B0))
+            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Balance", fontWeight = FontWeight.Bold)
+                Text(
+                    formatCurrencyWithSymbol(balance),
+                    fontWeight = FontWeight.Bold,
+                    color = if (balance >= 0) IncomeGreen else ExpenseRed
+                )
             }
         }
     }
 }
 
+@Composable
+fun SummaryRow(label: String, amount: Double, color: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(formatCurrencyWithSymbol(amount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = color)
+    }
+}
+
+
 
 @Composable
-fun TransactionCard(transaction: com.example.personalaccountant.data.Transaction) {
+fun TransactionCard(
+    transaction: com.example.personalaccountant.data.Transaction,
+    onClick: () -> Unit
+) {
     val (backgroundColor, textColor, emoji, typeText) = when (transaction.type) {
         "INCOME" -> Quadruple(
-            Color(0xFFE8F5E9),
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
             IncomeGreen,
             "💰",
             "Ingreso"
         )
         "EXPENSE" -> Quadruple(
-            Color(0xFFFFEBEE),
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
             ExpenseRed,
             "💸",
             "Gasto"
@@ -300,96 +347,79 @@ fun TransactionCard(transaction: com.example.personalaccountant.data.Transaction
             "Abono TC"
         )
         else -> Quadruple(
-            Color(0xFFF5F5F5),
-            Color.Gray,
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurfaceVariant,
             "📝",
             "Otro"
         )
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = BorderStroke(1.dp, textColor.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left side - Icon and details
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon circle
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(textColor.copy(alpha = 0.2f), RoundedCornerShape(20.dp)),
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(backgroundColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = emoji,
-                        fontSize = 20.sp
-                    )
+                    Text(text = emoji, fontSize = 20.sp)
                 }
                 
-                // Transaction details
                 Column {
                     Text(
                         text = transaction.description,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = typeText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
-                        Text(
                             text = transaction.category,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text("•", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                        Text(
+                            text = formatDate(transaction.date),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = formatDate(transaction.date),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
                 }
             }
             
-            // Right side - Amount
             val amountPrefix = when (transaction.type) {
-                "INCOME" -> ""
-                "EXPENSE" -> "- "
-                "CREDIT_PAYMENT" -> "- "
+                "INCOME" -> "+"
+                "EXPENSE" -> "-"
+                "CREDIT_PAYMENT" -> "-"
                 else -> ""
             }
             
             Text(
                 text = "$amountPrefix${formatCurrencyWithSymbol(transaction.amount)}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
                 color = textColor
             )
         }

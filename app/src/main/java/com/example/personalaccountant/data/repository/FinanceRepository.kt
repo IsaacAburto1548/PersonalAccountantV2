@@ -25,7 +25,7 @@ class FinanceRepository(private val database: AppDatabase) {
         accounts.sumOf { it.currentBalance }
     }
 
-    val recentTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
+    val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
 
     suspend fun addTransaction(transaction: Transaction) {
         database.withTransaction {

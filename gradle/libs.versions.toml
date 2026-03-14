@@ -1,18 +1,22 @@
 [versions]
 agp = "8.13.1"
-kotlin = "1.9.20"
+kotlin = "2.3.0"
 core-ktx = "1.12.0"
 junit = "4.13.2"
 androidx-test-ext-junit = "1.1.5"
 espresso-core = "3.5.1"
-lifecycle-runtime-ktx = "2.6.2"
+lifecycle-runtime-ktx = "2.7.0"
+lifecycle-runtime-compose = "2.7.0"
 activity-compose = "1.8.1"
-compose-bom = "2023.10.01"
-room = "2.6.1"
-ksp = "1.9.20-1.0.14"
+compose-bom = "2024.10.01"
+room = "2.8.4"
+ksp = "2.3.0"
 navigation-compose = "2.7.5"
 work-runtime-ktx = "2.9.0"
 itext = "7.2.5"
+hilt = "2.58"
+hilt-navigation-compose = "1.1.0"
+hilt-work = "1.1.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -29,6 +33,7 @@ ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview
 ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 material3 = { group = "androidx.compose.material3", name = "material3" }
+material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
@@ -37,8 +42,17 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 itext-kernel = { group = "com.itextpdf", name = "kernel", version.ref = "itext" }
 itext-layout = { group = "com.itextpdf", name = "layout", version.ref = "itext" }
 itext-io = { group = "com.itextpdf", name = "io", version.ref = "itext" }
+lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle-runtime-compose" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hilt-work" }
+hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hilt-work" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hiltAndroid = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlinKapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }

@@ -1,15 +1,28 @@
 package com.example.personalaccountant.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.personalaccountant.data.FixedTransactionRule
 import com.example.personalaccountant.data.repository.FinanceRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class FixedTransactionViewModel(private val repository: FinanceRepository) : ViewModel() {
+sealed class FixedTransactionUiEvent {
+    data class ShowSnackbar(val message: String) : FixedTransactionUiEvent()
+}
+
+@HiltViewModel
+class FixedTransactionViewModel @Inject constructor(
+    private val repository: FinanceRepository
+) : ViewModel() {
+
+    private val _uiEvent = Channel<FixedTransactionUiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     val upcomingPayments = repository.upcomingFixedPayments
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -21,30 +34,14 @@ class FixedTransactionViewModel(private val repository: FinanceRepository) : Vie
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun addRule(rule: FixedTransactionRule) {
-        viewModelScope.launch {
-            repository.createFixedRule(rule)
-        }
+        viewModelScope.launch { repository.createFixedRule(rule) }
     }
 
     fun updateRule(rule: FixedTransactionRule) {
-        viewModelScope.launch {
-            repository.updateFixedRule(rule)
-        }
+        viewModelScope.launch { repository.updateFixedRule(rule) }
     }
 
     fun deleteRule(id: Int) {
-        viewModelScope.launch {
-            repository.deleteFixedRule(id)
-        }
-    }
-}
-
-class FixedTransactionViewModelFactory(private val repository: FinanceRepository) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(FixedTransactionViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return FixedTransactionViewModel(repository) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        viewModelScope.launch { repository.deleteFixedRule(id) }
     }
 }

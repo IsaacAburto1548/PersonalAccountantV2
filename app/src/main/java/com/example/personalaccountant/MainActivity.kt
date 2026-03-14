@@ -10,45 +10,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.personalaccountant.data.Account
-import com.example.personalaccountant.data.AppDatabase
-import com.example.personalaccountant.data.repository.FinanceRepository
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.personalaccountant.notifications.PaymentReminderWorker
 import com.example.personalaccountant.ui.screens.AddTransactionScreen
-import com.example.personalaccountant.ui.screens.DashboardScreen
-import com.example.personalaccountant.ui.screens.FixedPaymentsScreen
+import com.example.personalaccountant.ui.screens.SplashScreen
+import com.example.personalaccountant.ui.screens.MainPagerScreen
 import com.example.personalaccountant.ui.theme.PersonalAccountantTheme
-import com.example.personalaccountant.ui.viewmodel.DashboardViewModel
-import com.example.personalaccountant.ui.viewmodel.DashboardViewModelFactory
-import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
-import com.example.personalaccountant.ui.viewmodel.TransactionViewModelFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
+import com.example.personalaccountant.data.repository.FinanceRepository
+import javax.inject.Inject
+import java.util.concurrent.TimeUnit
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var repository: FinanceRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val database = AppDatabase.getDatabase(applicationContext)
-        val repository = FinanceRepository(database)
-
-        // Seed initial data if empty
-        CoroutineScope(Dispatchers.IO).launch {
-            if (repository.allAccounts.first().isEmpty()) {
-                repository.addAccount(Account(name = "Efectivo", currentBalance = 0.0, type = "CASH"))
-                repository.addAccount(Account(name = "Tarjeta", currentBalance = 0.0, type = "CARD"))
-            }
-            
-            // Generate fixed credit card charges automatically
-            repository.generateFixedCreditCardCharges()
-        }
+        requestNotificationPermission()
+        schedulePaymentReminders()
 
         setContent {
             PersonalAccountantTheme {
@@ -57,13 +52,12 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    
-                    // Define animation specs for 200ms transitions
+
                     val enterTransition = fadeIn(animationSpec = tween(200))
                     val exitTransition = fadeOut(animationSpec = tween(200))
-                    
+
                     NavHost(
-                        navController = navController, 
+                        navController = navController,
                         startDestination = "splash",
                         enterTransition = { enterTransition },
                         exitTransition = { exitTransition },
@@ -71,31 +65,55 @@ class MainActivity : ComponentActivity() {
                         popExitTransition = { exitTransition }
                     ) {
                         composable("splash") {
-                            com.example.personalaccountant.ui.screens.SplashScreen(navController)
+                            SplashScreen(navController)
                         }
                         composable("main_pager") {
-                            com.example.personalaccountant.ui.screens.MainPagerScreen(
+                            MainPagerScreen(
                                 navController = navController,
-                                repository = repository,
                                 initialPage = 0
                             )
                         }
                         composable(
                             route = "add_transaction?transactionId={transactionId}",
-                            arguments = listOf(navArgument("transactionId") { 
+                            arguments = listOf(navArgument("transactionId") {
                                 type = NavType.IntType
-                                defaultValue = -1 
+                                defaultValue = -1
                             })
                         ) { backStackEntry ->
                             val transactionId = backStackEntry.arguments?.getInt("transactionId") ?: -1
-                            val viewModel: TransactionViewModel = viewModel(
-                                factory = TransactionViewModelFactory(repository)
-                            )
-                            AddTransactionScreen(navController, viewModel, transactionId)
+                            AddTransactionScreen(navController, transactionId)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasPermission) {
+                registerForActivityResult(ActivityResultContracts.RequestPermission()) {}.launch(
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
+        }
+    }
+
+    private fun schedulePaymentReminders() {
+        val workRequest = PeriodicWorkRequestBuilder<PaymentReminderWorker>(
+            24, TimeUnit.HOURS
+        ).setInitialDelay(1, TimeUnit.HOURS) // Simple delay for first run
+         .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "payment_reminders",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
     }
 }

@@ -34,7 +34,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,11 +45,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.personalaccountant.R
 import com.example.personalaccountant.data.Account
 import com.example.personalaccountant.data.Transaction
-import com.example.personalaccountant.ui.components.BottomNavigationBar
 import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -60,8 +60,8 @@ import java.util.Locale
 @Composable
 fun AddTransactionScreen(
     navController: NavController,
-    viewModel: TransactionViewModel,
-    transactionId: Int? = null
+    transactionId: Int? = null,
+    viewModel: TransactionViewModel = hiltViewModel()
 ) {
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -74,7 +74,7 @@ fun AddTransactionScreen(
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var originalTransaction by remember { mutableStateOf<Transaction?>(null) }
 
-    val accounts by viewModel.accounts.collectAsState()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val categories = listOf("Salarios", "Ingresos Personales", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
 
     // Load transaction if editing
@@ -146,9 +146,6 @@ fun AddTransactionScreen(
                 }
             )
         },
-        bottomBar = {
-            BottomNavigationBar(navController, "add_transaction")
-        }
     ) { paddingValues ->
         Column(
             modifier = Modifier

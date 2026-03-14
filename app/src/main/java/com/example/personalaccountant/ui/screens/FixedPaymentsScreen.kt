@@ -1,9 +1,14 @@
 package com.example.personalaccountant.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,58 +21,68 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.personalaccountant.R
 import com.example.personalaccountant.data.FixedTransactionRule
 import com.example.personalaccountant.ui.components.BottomNavigationBar
+import com.example.personalaccountant.ui.components.EmptyStateView
 import com.example.personalaccountant.ui.theme.BorderGray
 import com.example.personalaccountant.ui.theme.ExpenseRed
 import com.example.personalaccountant.ui.theme.IncomeGreen
+import com.example.personalaccountant.ui.viewmodel.FixedTransactionUiEvent
 import com.example.personalaccountant.ui.viewmodel.FixedTransactionViewModel
 import com.example.personalaccountant.utils.formatCurrencyWithSymbol
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.RadioButton
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,10 +90,24 @@ fun FixedPaymentsScreen(
     navController: NavController,
     viewModel: FixedTransactionViewModel
 ) {
-    val fixedRules by viewModel.fixedRules.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
+    val fixedRules by viewModel.fixedRules.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     var showAddDialog by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<FixedTransactionRule?>(null) }
+
+    // Handle UI Events
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is FixedTransactionUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -86,31 +115,34 @@ fun FixedPaymentsScreen(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.logo_financify),
                             contentDescription = "Logo",
-                            modifier = Modifier.size(50.dp)
+                            modifier = Modifier.size(40.dp)
                         )
-                        Text("Pagos Fijos", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Pagos Fijos", color = Color.White, fontWeight = FontWeight.Black)
                     }
                 },
-                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White
+                )
             )
         },
         bottomBar = {
             BottomNavigationBar(navController, "fixed_payments")
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(16.dp),
+                elevation = FloatingActionButtonDefaults.elevation(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Pago Fijo", tint = Color.White)
+                Icon(Icons.Default.Add, contentDescription = "Nuevo Pago Fijo", tint = Color.White)
             }
         }
     ) { paddingValues ->
@@ -124,40 +156,48 @@ fun FixedPaymentsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Calculate total for upcoming payments
+            // Upcoming Total Summary
             val upcomingTotal = sortedFixedRules.sumOf { rule ->
                 val (_, statusText, _) = getPaymentStatus(rule)
-                if (statusText == "Próximo") rule.baseAmount else 0.0
+                if (statusText == "Próximo" || statusText == "Vencido") rule.baseAmount else 0.0
             }
 
             if (upcomingTotal > 0) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)), // Light Orange
-                        border = BorderStroke(1.dp, Color(0xFFFFA726))
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color(0xFFFFA726), Color(0xFFFF7043))
+                                    )
+                                )
+                                .padding(24.dp)
                         ) {
-                            Text(
-                                text = "Total a Pagar (Próximos)",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFFEF6C00) // Darker Orange
-                            )
-                            Text(
-                                text = formatCurrencyWithSymbol(upcomingTotal),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFEF6C00)
-                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Info, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Total Próximo a Vencer",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = formatCurrencyWithSymbol(upcomingTotal),
+                                    style = MaterialTheme.typography.displaySmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -165,11 +205,10 @@ fun FixedPaymentsScreen(
 
             if (sortedFixedRules.isEmpty()) {
                 item {
-                    Text(
-                        text = "No hay pagos fijos configurados.\\n¡Agrega uno con el botón +!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(vertical = 32.dp)
+                    EmptyStateView(
+                        title = "Sin pagos fijos",
+                        subtitle = "Configura tus servicios y suscripciones",
+                        modifier = Modifier.padding(top = 32.dp)
                     )
                 }
             }
@@ -218,21 +257,13 @@ fun FixedPaymentCard(
     val (statusColor, statusText, daysUntil) = getPaymentStatus(rule)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(2.dp, statusColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onEdit() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.2f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -242,92 +273,53 @@ fun FixedPaymentCard(
                         )
                         if (rule.isCreditCardCharge) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "💳",
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                            Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                     Text(
                         text = rule.category,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                    // Show duration info
-                    if (rule.durationMonths != null) {
-                        val remaining = rule.durationMonths - rule.timesGenerated
-                        Text(
-                            text = "Duración: ${rule.timesGenerated} de ${rule.durationMonths} meses (${remaining} restantes)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (remaining <= 2) Color(0xFFFF9800) else Color.Gray
-                        )
-                    } else {
-                        Text(
-                            text = "Duración: Indefinido",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
-                }
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatCurrencyWithSymbol(rule.baseAmount),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (rule.type == "INCOME") IncomeGreen else ExpenseRed
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
-                // Display frequency info based on type
-                if (rule.frequencyType == "MONTHLY") {
-                    Text(
-                        text = "Día ${rule.dayOfMonth}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                } else if (rule.frequencyType == "INTERVAL" && rule.intervalDays != null) {
-                    Text(
-                        text = "Cada ${rule.intervalDays} días",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                
                 Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = statusColor
+                    text = formatCurrencyWithSymbol(rule.baseAmount),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = if (rule.type == "INCOME") IncomeGreen else ExpenseRed
                 )
-                if (daysUntil != null) {
-                    Text(
-                        text = if (daysUntil > 0) "En $daysUntil días" else if (daysUntil == 0) "Hoy" else "${-daysUntil} días de retraso",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(statusColor.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    if (daysUntil != null) {
+                        Text(
+                            text = if (daysUntil > 0) "En $daysUntil días" else if (daysUntil == 0) "Hoy" else "${-daysUntil} días de retraso",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
                 }
             }
         }
