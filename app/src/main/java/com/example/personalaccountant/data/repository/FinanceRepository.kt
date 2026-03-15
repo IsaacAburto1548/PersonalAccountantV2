@@ -418,8 +418,6 @@ class FinanceRepository(private val database: AppDatabase) {
                 targetYear = nextPaymentCalendar.get(Calendar.YEAR)
             } else {
                 // For monthly payments (original logic)
-                val currentMonth = calendar.get(Calendar.MONTH)
-                val currentYear = calendar.get(Calendar.YEAR)
                 val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
                 
                 nextPaymentCalendar.timeInMillis = currentTime

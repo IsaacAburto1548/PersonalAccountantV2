@@ -22,6 +22,7 @@ import com.example.personalaccountant.notifications.PaymentReminderWorker
 import com.example.personalaccountant.ui.screens.AddTransactionScreen
 import com.example.personalaccountant.ui.screens.SplashScreen
 import com.example.personalaccountant.ui.screens.MainPagerScreen
+import com.example.personalaccountant.ui.screens.AddAccountScreen
 import com.example.personalaccountant.ui.theme.PersonalAccountantTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.example.personalaccountant.data.repository.FinanceRepository
@@ -90,6 +91,9 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val transactionId = backStackEntry.arguments?.getInt("transactionId") ?: -1
                             AddTransactionScreen(navController, transactionId)
+                        }
+                        composable("add_account") {
+                            AddAccountScreen(navController)
                         }
                     }
                 }

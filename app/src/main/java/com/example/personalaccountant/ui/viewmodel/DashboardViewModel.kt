@@ -148,13 +148,21 @@ class DashboardViewModel @Inject constructor(
         onDone: (() -> Unit)? = null
     ) {
         viewModelScope.launch {
-            // Seed logic moved here from MainActivity CoroutineScope
-            if (repository.allAccounts.first().isEmpty()) {
+            val currentAccounts = repository.allAccounts.first()
+            if (currentAccounts.isEmpty()) {
                 repository.addAccount(Account(name = "Efectivo", currentBalance = 0.0, type = "CASH"))
-                repository.addAccount(Account(name = "Tarjeta", currentBalance = 0.0, type = "CARD"))
+                repository.addAccount(Account(name = "Cuenta Principal", currentBalance = 0.0, type = "BANK"))
+                _uiEvent.send(DashboardUiEvent.ShowSnackbar("Cuentas iniciales creadas"))
             }
             repository.generateFixedCreditCardCharges()
             onDone?.invoke()
+        }
+    }
+
+    fun addAccount(name: String, balance: Double, type: String) {
+        viewModelScope.launch {
+            repository.addAccount(Account(name = name, currentBalance = balance, type = type))
+            _uiEvent.send(DashboardUiEvent.ShowSnackbar("Cuenta creada: $name"))
         }
     }
 

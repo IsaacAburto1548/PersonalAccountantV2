@@ -98,6 +98,13 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirmation by remember { androidx.compose.runtime.mutableStateOf(false) }
 
+    // Seed data if empty
+    LaunchedEffect(accounts) {
+        if (accounts.isEmpty()) {
+            viewModel.seedDataIfEmpty()
+        }
+    }
+
     // Handle UI Events
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
@@ -286,11 +293,24 @@ fun DashboardScreen(
 
 
             item {
-                Text(
-                    text = "Cuentas",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Cuentas",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { navController.navigate("add_account") }) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Añadir Cuenta",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             items(accounts) { account ->
