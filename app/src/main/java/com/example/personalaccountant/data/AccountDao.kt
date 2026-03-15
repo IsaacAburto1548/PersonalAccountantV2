@@ -22,4 +22,7 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET currentBalance = :newBalance WHERE id = :accountId")
     suspend fun updateBalance(accountId: Int, newBalance: Double)
+
+    @androidx.room.Delete
+    suspend fun delete(account: Account)
 }

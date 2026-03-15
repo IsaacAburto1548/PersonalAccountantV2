@@ -25,6 +25,9 @@ import com.example.personalaccountant.ui.screens.MainPagerScreen
 import com.example.personalaccountant.ui.theme.PersonalAccountantTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.example.personalaccountant.data.repository.FinanceRepository
+import com.example.personalaccountant.data.prefs.PreferenceManager
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import javax.inject.Inject
 import java.util.concurrent.TimeUnit
 import android.Manifest
@@ -39,6 +42,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var repository: FinanceRepository
 
+    @Inject
+    lateinit var preferenceManager: PreferenceManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -46,7 +52,9 @@ class MainActivity : ComponentActivity() {
         schedulePaymentReminders()
 
         setContent {
-            PersonalAccountantTheme {
+            val isDarkMode by preferenceManager.isDarkMode.collectAsState(initial = false)
+
+            PersonalAccountantTheme(darkTheme = isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

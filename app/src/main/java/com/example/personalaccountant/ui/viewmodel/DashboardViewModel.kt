@@ -8,6 +8,7 @@ import com.example.personalaccountant.data.repository.FinanceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import com.example.personalaccountant.utils.PdfExporter
+import com.example.personalaccountant.data.prefs.PreferenceManager
 import java.io.File
 import java.util.Calendar
 import javax.inject.Inject
@@ -40,7 +42,8 @@ sealed class DashboardUiState {
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: FinanceRepository,
-    private val pdfExporter: PdfExporter
+    private val pdfExporter: PdfExporter,
+    private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
     private val _uiEvent = Channel<DashboardUiEvent>()
@@ -49,8 +52,47 @@ class DashboardViewModel @Inject constructor(
     val totalBalance: StateFlow<Double> = repository.totalBalance
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
+    val isDarkMode: StateFlow<Boolean> = preferenceManager.isDarkMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val accounts: StateFlow<List<Account>> = repository.allAccounts
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _selectedAccountIds = kotlinx.coroutines.flow.MutableStateFlow<Set<Int>>(emptySet())
+    val selectedAccountIds = _selectedAccountIds.asStateFlow()
+
+    private val _isSelectionMode = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isSelectionMode = _isSelectionMode.asStateFlow()
+
+    fun toggleSelection(accountId: Int) {
+        if (!_isSelectionMode.value) {
+            _isSelectionMode.value = true
+        }
+        val current = _selectedAccountIds.value
+        if (current.contains(accountId)) {
+            _selectedAccountIds.value = current - accountId
+            if (_selectedAccountIds.value.isEmpty()) {
+                _isSelectionMode.value = false
+            }
+        } else {
+            _selectedAccountIds.value = current + accountId
+        }
+    }
+
+    fun clearSelection() {
+        _isSelectionMode.value = false
+        _selectedAccountIds.value = emptySet()
+    }
+
+    fun deleteSelectedAccounts() {
+        viewModelScope.launch {
+            val idsToDelete = _selectedAccountIds.value
+            val accountsToDelete = accounts.value.filter { it.id in idsToDelete }
+            accountsToDelete.forEach { repository.deleteAccount(it) }
+            _uiEvent.send(DashboardUiEvent.ShowSnackbar("${idsToDelete.size} cuentas eliminadas"))
+            clearSelection()
+        }
+    }
 
     val recentTransactions: StateFlow<List<Transaction>> = repository.allTransactions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -113,6 +155,24 @@ class DashboardViewModel @Inject constructor(
             }
             repository.generateFixedCreditCardCharges()
             onDone?.invoke()
+        }
+    }
+
+    fun toggleDarkMode() {
+        preferenceManager.toggleDarkMode()
+    }
+
+    fun deleteAccount(account: Account) {
+        viewModelScope.launch {
+            repository.deleteAccount(account)
+            _uiEvent.send(DashboardUiEvent.ShowSnackbar("Cuenta eliminada: ${account.name}"))
+        }
+    }
+
+    fun updateAccount(account: Account) {
+        viewModelScope.launch {
+            repository.updateAccount(account)
+            _uiEvent.send(DashboardUiEvent.ShowSnackbar("Cuenta actualizada"))
         }
     }
 }

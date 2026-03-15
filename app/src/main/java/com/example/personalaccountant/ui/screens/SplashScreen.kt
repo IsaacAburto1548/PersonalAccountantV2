@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -24,24 +25,35 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(navController: NavController) {
-    val scale = remember { Animatable(0.8f) }
+    val scale = remember { Animatable(1.5f) } // Start zoomed in on the dog
     val alpha = remember { Animatable(0f) }
+    val textAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
+        // Stage 1: Fade in dog (zoomed)
+        alpha.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800)
+        )
+        
+        delay(500) // Stay on "incomplete" logo (dog focus)
+        
+        // Stage 2: Zoom out to show full logo + text reveal
         launch {
             scale.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 1000)
+                animationSpec = tween(durationMillis = 1200)
             )
         }
         launch {
-            alpha.animateTo(
+            delay(400)
+            textAlpha.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 1000)
+                animationSpec = tween(durationMillis = 800)
             )
         }
         
-        delay(2000) // Wait for animation (1000ms) + 1 second hold
+        delay(2500) // Total experience time
         navController.navigate("main_pager") {
             popUpTo("splash") { inclusive = true }
         }
@@ -50,15 +62,15 @@ fun SplashScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFAFAFA)),
+            .background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center
     ) {
-        // Logo Image - Larger size
+        // Logo Image - Animating from dog-focus to full logo
         Image(
             painter = painterResource(id = R.drawable.logo_financify),
             contentDescription = "Financify Logo",
             modifier = Modifier
-                .size(400.dp)
+                .size(350.dp)
                 .scale(scale.value)
                 .alpha(alpha.value)
         )

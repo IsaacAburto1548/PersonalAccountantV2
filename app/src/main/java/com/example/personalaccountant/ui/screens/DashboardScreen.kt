@@ -28,7 +28,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,10 +40,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -82,9 +90,13 @@ fun DashboardScreen(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val recentTransactions by viewModel.recentTransactions.collectAsStateWithLifecycle()
     val spendingByCategory by viewModel.spendingByCategory.collectAsStateWithLifecycle()
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
+    val selectedAccountIds by viewModel.selectedAccountIds.collectAsStateWithLifecycle()
     
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDeleteConfirmation by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     // Handle UI Events
     LaunchedEffect(Unit) {
@@ -109,30 +121,83 @@ fun DashboardScreen(
         }
     }
 
+    if (showDeleteConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Eliminar cuentas") },
+            text = { Text("¿Seguro que deseas eliminar las ${selectedAccountIds.size} cuentas seleccionadas?") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.deleteSelectedAccounts()
+                        showDeleteConfirmation = false
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    BackHandler(enabled = isSelectionMode) {
+        viewModel.clearSelection()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo_financify),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Text("Financify", color = Color.White, fontWeight = FontWeight.Black)
+                    if (isSelectionMode) {
+                        Text("${selectedAccountIds.size} seleccionadas")
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo_financify),
+                                contentDescription = "Logo",
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .padding(2.dp)
+                            )
+                            Text("Financify", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
+                        }
+                    }
+                },
+                navigationIcon = {
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cerrar selección", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.exportMonthlyReport() }) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = "Exportar PDF", tint = Color.White)
+                    if (isSelectionMode) {
+                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar seleccionadas", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.exportMonthlyReport() }) {
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = "Exportar PDF", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        IconButton(onClick = { viewModel.toggleDarkMode() }) {
+                            Icon(
+                                imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = "Alternar Modo Oscuro",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+                    containerColor = if (isSelectionMode) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -141,13 +206,15 @@ fun DashboardScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_transaction") },
-                containerColor = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(16.dp),
-                elevation = FloatingActionButtonDefaults.elevation(8.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Transacción", tint = Color.White)
+            if (!isSelectionMode) {
+                FloatingActionButton(
+                    onClick = { navController.navigate("add_transaction") },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Nueva Transacción", tint = MaterialTheme.colorScheme.onPrimary)
+                }
             }
         }
     ) { paddingValues ->
@@ -182,7 +249,7 @@ fun DashboardScreen(
                             Text(
                                 text = "Saldo Total Disponible",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -190,12 +257,33 @@ fun DashboardScreen(
                                 text = formatCurrencyWithSymbol(totalBalance),
                                 style = MaterialTheme.typography.displayLarge,
                                 fontWeight = FontWeight.Black,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
                 }
             }
+
+            // Spending pie chart - MOVED BELOW TOTAL BALANCE
+            if (spendingByCategory.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+
+                            SpendingPieChart(
+                                categories = spendingByCategory,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+
 
             item {
                 Text(
@@ -206,7 +294,14 @@ fun DashboardScreen(
             }
 
             items(accounts) { account ->
-                AccountCard(account = account)
+                AccountCard(
+                    account = account,
+                    onDelete = { viewModel.deleteAccount(account) },
+                    onEdit = { /* Navigate to edit account screen or show dialog */ },
+                    isSelected = selectedAccountIds.contains(account.id),
+                    isSelectionMode = isSelectionMode,
+                    onHighlight = { viewModel.toggleSelection(account.id) }
+                )
             }
             
             if (accounts.isEmpty()) {
@@ -216,31 +311,6 @@ fun DashboardScreen(
                         subtitle = "Agrega una cuenta para comenzar",
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
-                }
-            }
-
-            // Spending pie chart
-            if (spendingByCategory.isNotEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "Gastos por Categoría",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-                            SpendingPieChart(
-                                categories = spendingByCategory,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
                 }
             }
 
@@ -260,7 +330,7 @@ fun DashboardScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .clickable { navController.navigate("add_transaction?transactionId=${transaction.id}") },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 ) {
                     Row(
                         modifier = Modifier
@@ -281,7 +351,7 @@ fun DashboardScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = if (transaction.type == "INCOME") Icons.Default.Add else Icons.Default.Delete,
+                                    imageVector = if (transaction.type == "INCOME") Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                                     contentDescription = null,
                                     tint = if (transaction.type == "INCOME") IncomeGreen else ExpenseRed,
                                     modifier = Modifier.size(20.dp)
