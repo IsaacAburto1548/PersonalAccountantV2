@@ -25,9 +25,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +56,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.scale
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +72,6 @@ fun TransactionHistoryScreen(
     val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
 
@@ -114,7 +118,7 @@ fun TransactionHistoryScreen(
                                 contentDescription = "Logo",
                                 modifier = Modifier.size(50.dp)
                             )
-                            Text("Historial", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("Historial", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -132,18 +136,18 @@ fun TransactionHistoryScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text("Buscar transacción...", color = Color.White.copy(alpha = 0.7f)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
+                    placeholder = { Text("Buscar transacción...", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.White,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = MaterialTheme.colorScheme.onPrimary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                        cursorColor = MaterialTheme.colorScheme.onPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     singleLine = true
                 )
@@ -162,7 +166,7 @@ fun TransactionHistoryScreen(
                             onClick = { viewModel.clearMonthFilter() },
                             label = { Text("Todo") },
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color.White,
+                                selectedContainerColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedLabelColor = MaterialTheme.colorScheme.primary
                             )
                         )
@@ -178,9 +182,9 @@ fun TransactionHistoryScreen(
                         FilterChip(
                             selected = isSelected,
                             onClick = { viewModel.setSelectedMonth(month.first, month.second) },
-                            label = { Text(name.capitalize()) },
+                            label = { Text(name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }) },
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color.White,
+                                selectedContainerColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedLabelColor = MaterialTheme.colorScheme.primary
                             )
                         )
@@ -226,44 +230,51 @@ fun TransactionHistoryScreen(
                     )
 
                     LaunchedEffect(dismissState.currentValue) {
-                        if (dismissState.currentValue == SwipeToDismissBoxValue.Settled && transactionToDelete != null) {
-                            viewModel.deleteTransaction(transactionToDelete!!)
-                            transactionToDelete = null // Reset after deletion
+                        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                            viewModel.deleteTransaction(transaction)
                         }
                     }
 
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        enableDismissFromStartToEnd = false,
-                        backgroundContent = {
-                            val color = when (dismissState.dismissDirection) {
-                                SwipeToDismissBoxValue.EndToStart -> ExpenseRed
-                                else -> Color.Transparent
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(color)
-                                    .padding(horizontal = 20.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Eliminar",
-                                    tint = Color.White
+                    Box(modifier = Modifier.animateItem()) {
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                val isDismissing = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+                                val color by androidx.compose.animation.animateColorAsState(
+                                    if (isDismissing) ExpenseRed else Color.Transparent,
+                                    label = "deleteColor"
+                                )
+                                val scale by androidx.compose.animation.core.animateFloatAsState(
+                                    if (isDismissing) 1.2f else 0.8f,
+                                    label = "iconScale"
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(color)
+                                        .padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Eliminar",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.scale(scale)
+                                    )
+                                }
+                            },
+                            content = {
+                                TransactionCard(
+                                    transaction = transaction,
+                                    onClick = {
+                                        navController.navigate("add_transaction?transactionId=${transaction.id}")
+                                    }
                                 )
                             }
-                        },
-                        content = {
-                            TransactionCard(
-                                transaction = transaction,
-                                onClick = {
-                                    navController.navigate("add_transaction?transactionId=${transaction.id}")
-                                }
-                            )
-                        }
-                    )
+                        )
+                    }
                 }
                 
                 // Summary section only if month is selected
@@ -296,7 +307,7 @@ fun TransactionSummaryCard(income: Double, expense: Double, credit: Double, bala
             SummaryRow("Ingresos", income, IncomeGreen)
             SummaryRow("Gastos", -expense, ExpenseRed)
             SummaryRow("Abonos TC", -credit, Color(0xFF9C27B0))
-            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Balance", fontWeight = FontWeight.Bold)
                 Text(
@@ -327,29 +338,29 @@ fun TransactionCard(
     transaction: com.example.personalaccountant.data.Transaction,
     onClick: () -> Unit
 ) {
-    val (backgroundColor, textColor, emoji, typeText) = when (transaction.type) {
+    val (backgroundColor, textColor, icon, _) = when (transaction.type) {
         "INCOME" -> Quadruple(
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
             IncomeGreen,
-            "💰",
+            Icons.AutoMirrored.Filled.TrendingUp,
             "Ingreso"
         )
         "EXPENSE" -> Quadruple(
             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
             ExpenseRed,
-            "💸",
+            Icons.AutoMirrored.Filled.TrendingDown,
             "Gasto"
         )
         "CREDIT_PAYMENT" -> Quadruple(
-            Color(0xFFF3E5F5),
-            Color(0xFF9C27B0),
-            "💳",
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+            MaterialTheme.colorScheme.tertiary,
+            Icons.Default.CreditCard,
             "Abono TC"
         )
         else -> Quadruple(
             MaterialTheme.colorScheme.surfaceVariant,
             MaterialTheme.colorScheme.onSurfaceVariant,
-            "📝",
+            Icons.AutoMirrored.Filled.Notes,
             "Otro"
         )
     }
@@ -381,7 +392,12 @@ fun TransactionCard(
                         .background(backgroundColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = emoji, fontSize = 20.sp)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = textColor
+                    )
                 }
                 
                 Column {

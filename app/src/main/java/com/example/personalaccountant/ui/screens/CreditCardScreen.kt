@@ -37,7 +37,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -151,7 +151,7 @@ fun CreditCardScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -206,7 +206,7 @@ fun CreditCardScreen(
                                 text = formatCurrencyWithSymbol(totalPendingBalance),
                                 style = MaterialTheme.typography.displayMedium,
                                 fontWeight = FontWeight.Black,
-                                color = ExpenseRed
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -380,7 +380,7 @@ fun CreditCardChargeItem(
         modifier = Modifier.fillMaxWidth().clickable { onEdit() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -495,7 +495,7 @@ fun AddChargeDialog(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE3F2FD)
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -503,18 +503,18 @@ fun AddChargeDialog(
                             text = "Información del Ciclo",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1976D2)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Ciclo: ${formatDateShort(cycleStart)} - ${formatDateShort(cycleEnd)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1976D2)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Text(
                             text = "Fecha límite de pago: ${formatDate(dueDate)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1976D2),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -624,7 +624,7 @@ fun EditChargeDialog(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE3F2FD)
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -632,18 +632,18 @@ fun EditChargeDialog(
                             text = "Información del Ciclo",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1976D2)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Ciclo: ${formatDateShort(cycleStart)} - ${formatDateShort(cycleEnd)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1976D2)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Text(
                             text = "Fecha límite de pago: ${formatDate(dueDate)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1976D2),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -726,7 +726,7 @@ fun MakePaymentDialog(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFEBEE)
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
                     )
                 ) {
                     Column(
@@ -736,13 +736,13 @@ fun MakePaymentDialog(
                         Text(
                             text = "Saldo Actual",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFFD32F2F)
+                            color = MaterialTheme.colorScheme.error
                         )
                         Text(
                             text = formatCurrencyWithSymbol(currentBalance),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFD32F2F)
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }

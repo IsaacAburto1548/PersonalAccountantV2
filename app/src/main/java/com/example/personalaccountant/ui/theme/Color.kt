@@ -2,34 +2,32 @@ package com.example.personalaccountant.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Light Palette ──────────────────────────────────────────────
-val LightBackground  = Color(0xFFF6F8FA)
+// ── Light Palette (Clean & Crisp) ──────────────────────────────
+val LightBackground  = Color(0xFFFBFDFF) // Very light blue-tinted white
 val LightSurface     = Color(0xFFFFFFFF)
-val LightPrimary     = Color(0xFF2E7D32)   // Deep forest green
+val LightPrimary     = Color(0xFF006D3B) // Sharp Emerald Green
 val LightOnPrimary   = Color(0xFFFFFFFF)
-val LightSecondary   = Color(0xFF43A047)   // Medium green
+val LightSecondary   = Color(0xFF4C6358)
 val LightOnSecondary = Color(0xFFFFFFFF)
-val LightTertiary    = Color(0xFF1565C0)   // Deep blue accent
+val LightTertiary    = Color(0xFF1976D2) // Classic Professional Blue
 
-// ── Dark Palette ───────────────────────────────────────────────
-val DarkBackground   = Color(0xFF0F1923)   // Deep slate
-val DarkSurface      = Color(0xFF1A2533)   // Dark card surface
-val DarkPrimary      = Color(0xFF66BB6A)   // Lighter green (readable on dark)
-val DarkOnPrimary    = Color(0xFF003300)
-val DarkSecondary    = Color(0xFF81C784)
-val DarkOnSecondary  = Color(0xFF003300)
-val DarkTertiary     = Color(0xFF42A5F5)
+// ── Dark Palette (Deep & Premium) ──────────────────────────────
+val DarkBackground   = Color(0xFF0C1116) // Deep Charcoal, almost black
+val DarkSurface      = Color(0xFF161C24) // Slightly lighter for cards
+val DarkPrimary      = Color(0xFF2ECC71) // Bright emerald (excellent on dark)
+val DarkOnPrimary    = Color(0xFF00391C)
+val DarkSecondary    = Color(0xFFB1CCC0)
+val DarkOnSecondary  = Color(0xFF1D352B)
+val DarkTertiary     = Color(0xFF90CAF9)
 
-// ── Semantic Colors ────────────────────────────────────────────
-val IncomeGreen  = Color(0xFF4CAF50)   // Income positive
-val ExpenseRed   = Color(0xFFEF5350)   // Expense negative
-val CashOrange   = Color(0xFFFF9800)   // Cash account accent
-val CardBlue     = Color(0xFF1E88E5)   // Card account accent
-val PendingAmber = Color(0xFFFFB300)   // Pending status
+// ── Semantic Colors (High Visibility) ────────────────────────────
+val IncomeGreen      = Color(0xFF00C853) // Vivid Success Green
+val ExpenseRed       = Color(0xFFFF4D4D) // Punchy Error Red
+val CashOrange       = Color(0xFFFFAB40) 
+val CardBlue         = Color(0xFF448AFF)
 
-// ── Surface & Border ──────────────────────────────────────────
-val BorderGray      = Color(0xFFE0E0E0)
-val BorderGrayDark  = Color(0xFF2C3E50)
-val TextSecondary   = Color(0xFF757575)
-val SurfaceLight    = Color(0xFFF5F5F5)
-val SurfaceDark     = Color(0xFF1A2533)
+// ── Borders & Accents ──────────────────────────────────────────
+val BorderGray       = Color(0xFFE0E6ED)
+val BorderGrayDark   = Color(0xFF2F3B4D)
+val SurfaceVariantLt = Color(0xFFF1F4F8)
+val SurfaceVariantDk = Color(0xFF212B36)

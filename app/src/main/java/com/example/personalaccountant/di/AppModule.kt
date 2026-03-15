@@ -2,6 +2,7 @@ package com.example.personalaccountant.di
 
 import android.content.Context
 import com.example.personalaccountant.data.AppDatabase
+import com.example.personalaccountant.data.prefs.PreferenceManager
 import com.example.personalaccountant.data.repository.FinanceRepository
 import com.example.personalaccountant.utils.PdfExporter
 import dagger.Module
@@ -14,6 +15,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun providePreferenceManager(@ApplicationContext context: Context): PreferenceManager {
+        return PreferenceManager(context)
+    }
 
     @Provides
     @Singleton

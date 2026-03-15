@@ -108,6 +108,19 @@ class FinanceRepository(private val database: AppDatabase) {
         accountDao.insert(account)
     }
 
+    suspend fun deleteAccount(account: Account) {
+        database.withTransaction {
+            // Option 1: Delete all transactions associated with this account
+            // Option 2: Just delete the account. If there are foreign keys, it might fail or delete cascades.
+            // For now, let's assume we want to clean up.
+            accountDao.delete(account)
+        }
+    }
+
+    suspend fun updateAccount(account: Account) {
+        accountDao.update(account)
+    }
+
     // Fixed Transaction Logic
     
     val upcomingFixedPayments: Flow<List<com.example.personalaccountant.data.MonthlyPaymentInstance>> = 
