@@ -21,3 +21,21 @@ fun formatDateShort(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
     return sdf.format(Date(timestamp))
 }
+
+/**
+ * Format a timestamp to date and time "dd/MM/yyyy HH:mm"
+ * Example: "22/11/2024 14:30"
+ */
+fun formatDateTime(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd/MMM/yyyy - HH:mm", Locale("es", "ES"))
+    return sdf.format(Date(timestamp))
+}
+
+/**
+ * Format a timestamp to time only "HH:mm"
+ * Example: "14:30"
+ */
+fun formatTime(timestamp: Long): String {
+    val sdf = SimpleDateFormat("HH:mm", Locale("es", "ES"))
+    return sdf.format(Date(timestamp))
+}

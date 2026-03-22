@@ -69,7 +69,7 @@ import com.example.personalaccountant.ui.theme.BorderGray
 import com.example.personalaccountant.ui.viewmodel.DashboardUiEvent
 import com.example.personalaccountant.ui.viewmodel.DashboardViewModel
 import com.example.personalaccountant.utils.formatCurrencyWithSymbol
-import com.example.personalaccountant.utils.formatDate
+import com.example.personalaccountant.utils.formatDateTime
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -385,7 +385,7 @@ fun DashboardScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = formatDate(transaction.date),
+                                    text = formatDateTime(transaction.date),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )

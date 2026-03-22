@@ -51,6 +51,7 @@ import com.example.personalaccountant.ui.viewmodel.TransactionUiEvent
 import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
 import com.example.personalaccountant.utils.formatCurrencyWithSymbol
 import com.example.personalaccountant.utils.formatDate
+import com.example.personalaccountant.utils.formatDateTime
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -167,7 +168,15 @@ fun TransactionHistoryScreen(
                             label = { Text("Todo") },
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                                selectedLabelColor = MaterialTheme.colorScheme.primary,
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                labelColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selectedMonth == null,
+                                borderColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedBorderColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -185,7 +194,15 @@ fun TransactionHistoryScreen(
                             label = { Text(name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }) },
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                                selectedLabelColor = MaterialTheme.colorScheme.primary,
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                labelColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedBorderColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -417,7 +434,7 @@ fun TransactionCard(
                         )
                         Text("•", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                         Text(
-                            text = formatDate(transaction.date),
+                            text = formatDateTime(transaction.date),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )

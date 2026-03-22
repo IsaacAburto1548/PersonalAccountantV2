@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
@@ -24,6 +24,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -53,6 +54,7 @@ import com.example.personalaccountant.data.Account
 import com.example.personalaccountant.data.Transaction
 import com.example.personalaccountant.ui.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -131,7 +133,7 @@ fun AddTransactionScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 actions = {
@@ -175,7 +177,7 @@ fun AddTransactionScreen(
                     label = { Text("Cuenta") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = accountExpanded,
@@ -220,7 +222,7 @@ fun AddTransactionScreen(
                     label = { Text("Categoría") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = categoryExpanded,
@@ -258,7 +260,24 @@ fun AddTransactionScreen(
                     onDismissRequest = { showDatePicker = false },
                     confirmButton = {
                         TextButton(onClick = {
-                            datePickerState.selectedDateMillis?.let { selectedDate = it }
+                            datePickerState.selectedDateMillis?.let { newDateMillis ->
+                                val currentTime = Calendar.getInstance()
+                                currentTime.timeInMillis = selectedDate
+                                
+                                // The DatePicker returns UTC midnight, but we just want the date parts.
+                                // Actually, DatePicker returns UTC time. Let's create a UTC calendar to get day/month/year,
+                                // then set those into local calendar.
+                                val utcCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+                                utcCal.timeInMillis = newDateMillis
+                                
+                                val localCal = Calendar.getInstance()
+                                localCal.timeInMillis = selectedDate
+                                localCal.set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+                                localCal.set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+                                localCal.set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
+                                
+                                selectedDate = localCal.timeInMillis
+                            }
                             showDatePicker = false
                         }) {
                             Text("OK")
@@ -293,7 +312,8 @@ fun AddTransactionScreen(
                                 description = description,
                                 category = category,
                                 type = type,
-                                accountId = selectedAccount!!.id
+                                accountId = selectedAccount!!.id,
+                                date = selectedDate
                             )
                         }
                         navController.popBackStack()
