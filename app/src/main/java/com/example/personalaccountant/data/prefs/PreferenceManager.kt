@@ -23,4 +23,27 @@ class PreferenceManager @Inject constructor(@ApplicationContext context: Context
     fun toggleDarkMode() {
         setDarkMode(!_isDarkMode.value)
     }
+
+    private val PREF_CUSTOM_CATEGORIES = "custom_categories"
+    
+    private val _customCategories = MutableStateFlow(
+        prefs.getStringSet(PREF_CUSTOM_CATEGORIES, emptySet())?.toList() ?: emptyList()
+    )
+    val customCategories = _customCategories.asStateFlow()
+
+    fun addCustomCategory(category: String) {
+        val current = _customCategories.value.toMutableSet()
+        if (current.add(category)) {
+            prefs.edit().putStringSet(PREF_CUSTOM_CATEGORIES, current).apply()
+            _customCategories.value = current.toList()
+        }
+    }
+
+    fun removeCustomCategory(category: String) {
+        val current = _customCategories.value.toMutableSet()
+        if (current.remove(category)) {
+            prefs.edit().putStringSet(PREF_CUSTOM_CATEGORIES, current).apply()
+            _customCategories.value = current.toList()
+        }
+    }
 }

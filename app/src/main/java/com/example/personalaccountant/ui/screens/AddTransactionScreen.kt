@@ -77,7 +77,11 @@ fun AddTransactionScreen(
     var originalTransaction by remember { mutableStateOf<Transaction?>(null) }
 
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
-    val categories = listOf("Salarios", "Ingresos Personales", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val customCategories by viewModel.customCategories.collectAsStateWithLifecycle()
+    
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var newCategoryText by remember { mutableStateOf("") }
 
     // Load transaction if editing
     LaunchedEffect(transactionId) {
@@ -243,9 +247,32 @@ fun AddTransactionScreen(
                             onClick = {
                                 category = cat
                                 categoryExpanded = false
-                            }
+                            },
+                            trailingIcon = if (cat in customCategories) ({
+                                IconButton(
+                                    onClick = {
+                                        viewModel.removeCustomCategory(cat)
+                                        if (category == cat) category = categories.firstOrNull { it != cat } ?: ""
+                                    },
+                                    modifier = androidx.compose.ui.Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Eliminar categoría",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }) else null
                         )
                     }
+                    androidx.compose.material3.HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("➕ Añadir nueva categoría", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                        onClick = {
+                            categoryExpanded = false
+                            showAddCategoryDialog = true
+                        }
+                    )
                 }
             }
 
@@ -334,5 +361,39 @@ fun AddTransactionScreen(
                 Text(if (originalTransaction != null) "Actualizar Transacción" else "Guardar Transacción")
             }
         }
+    }
+
+    if (showAddCategoryDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Nueva Categoría") },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryText,
+                    onValueChange = { newCategoryText = it },
+                    label = { Text("Nombre de categoría") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryText.isNotBlank()) {
+                            viewModel.addCustomCategory(newCategoryText.trim())
+                            category = newCategoryText.trim()
+                            newCategoryText = ""
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
