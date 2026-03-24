@@ -93,6 +93,7 @@ fun FixedPaymentsScreen(
     val fixedRules by viewModel.fixedRules.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val customCategories by viewModel.customCategories.collectAsStateWithLifecycle()
     
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -229,7 +230,9 @@ fun FixedPaymentsScreen(
             rule = null,
             accounts = accounts,
             categories = categories,
+            customCategories = customCategories,
             onAddCategory = { viewModel.addCustomCategory(it) },
+            onRemoveCategory = { viewModel.removeCustomCategory(it) },
             onDismiss = { showAddDialog = false },
             onSave = { rule ->
                 viewModel.addRule(rule)
@@ -243,7 +246,9 @@ fun FixedPaymentsScreen(
             rule = editingRule,
             accounts = accounts,
             categories = categories,
+            customCategories = customCategories,
             onAddCategory = { viewModel.addCustomCategory(it) },
+            onRemoveCategory = { viewModel.removeCustomCategory(it) },
             onDismiss = { editingRule = null },
             onSave = { rule ->
                 viewModel.updateRule(rule)
@@ -337,7 +342,9 @@ fun FixedPaymentDialog(
     rule: FixedTransactionRule?,
     accounts: List<com.example.personalaccountant.data.Account>,
     categories: List<String>,
+    customCategories: List<String>,
     onAddCategory: (String) -> Unit,
+    onRemoveCategory: (String) -> Unit,
     onDismiss: () -> Unit,
     onSave: (FixedTransactionRule) -> Unit
 ) {
@@ -480,7 +487,22 @@ fun FixedPaymentDialog(
                                 onClick = {
                                     category = cat
                                     categoryExpanded = false
-                                }
+                                },
+                                trailingIcon = if (cat in customCategories) ({
+                                    IconButton(
+                                        onClick = {
+                                            onRemoveCategory(cat)
+                                            if (category == cat) category = categories.firstOrNull { it != cat } ?: ""
+                                        },
+                                        modifier = androidx.compose.ui.Modifier.size(20.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Eliminar categoría",
+                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }) else null
                             )
                         }
                         androidx.compose.material3.HorizontalDivider()

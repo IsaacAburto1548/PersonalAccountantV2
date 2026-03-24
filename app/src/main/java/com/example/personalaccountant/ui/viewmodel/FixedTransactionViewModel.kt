@@ -38,12 +38,18 @@ class FixedTransactionViewModel @Inject constructor(
 
     private val defaultCategories = listOf("Salarios", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
 
+    val customCategories = preferenceManager.customCategories
+
     val categories: kotlinx.coroutines.flow.StateFlow<List<String>> = preferenceManager.customCategories
         .map { custom -> (defaultCategories + custom).distinct() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), defaultCategories)
 
     fun addCustomCategory(category: String) {
         preferenceManager.addCustomCategory(category)
+    }
+
+    fun removeCustomCategory(category: String) {
+        preferenceManager.removeCustomCategory(category)
     }
 
     fun addRule(rule: FixedTransactionRule) {

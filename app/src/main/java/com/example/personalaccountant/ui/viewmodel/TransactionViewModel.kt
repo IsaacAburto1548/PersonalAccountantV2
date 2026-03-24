@@ -40,12 +40,18 @@ class TransactionViewModel @Inject constructor(
 
     private val defaultCategories = listOf("Salarios", "Ingresos Personales", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
     
+    val customCategories = preferenceManager.customCategories
+
     val categories: StateFlow<List<String>> = preferenceManager.customCategories
         .map { custom -> (defaultCategories + custom).distinct() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), defaultCategories)
 
     fun addCustomCategory(category: String) {
         preferenceManager.addCustomCategory(category)
+    }
+
+    fun removeCustomCategory(category: String) {
+        preferenceManager.removeCustomCategory(category)
     }
 
     // Selected month: null = all time

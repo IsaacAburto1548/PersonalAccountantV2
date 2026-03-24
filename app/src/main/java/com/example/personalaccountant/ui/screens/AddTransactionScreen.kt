@@ -78,6 +78,7 @@ fun AddTransactionScreen(
 
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val customCategories by viewModel.customCategories.collectAsStateWithLifecycle()
     
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryText by remember { mutableStateOf("") }
@@ -246,7 +247,22 @@ fun AddTransactionScreen(
                             onClick = {
                                 category = cat
                                 categoryExpanded = false
-                            }
+                            },
+                            trailingIcon = if (cat in customCategories) ({
+                                IconButton(
+                                    onClick = {
+                                        viewModel.removeCustomCategory(cat)
+                                        if (category == cat) category = categories.firstOrNull { it != cat } ?: ""
+                                    },
+                                    modifier = androidx.compose.ui.Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Eliminar categoría",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }) else null
                         )
                     }
                     androidx.compose.material3.HorizontalDivider()

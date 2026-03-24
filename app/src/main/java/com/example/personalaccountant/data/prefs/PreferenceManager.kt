@@ -38,4 +38,12 @@ class PreferenceManager @Inject constructor(@ApplicationContext context: Context
             _customCategories.value = current.toList()
         }
     }
+
+    fun removeCustomCategory(category: String) {
+        val current = _customCategories.value.toMutableSet()
+        if (current.remove(category)) {
+            prefs.edit().putStringSet(PREF_CUSTOM_CATEGORIES, current).apply()
+            _customCategories.value = current.toList()
+        }
+    }
 }
