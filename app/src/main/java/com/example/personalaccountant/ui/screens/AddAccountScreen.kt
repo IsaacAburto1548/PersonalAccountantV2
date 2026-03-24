@@ -96,22 +96,33 @@ fun AddAccountScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val nameError = name.isNotEmpty() && name.isBlank()
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Nombre de la cuenta") },
                 placeholder = { Text("Ej: Banco Nacional, Efectivo...") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = nameError,
+                supportingText = {
+                    if (nameError) Text("El nombre no puede estar en blanco", color = MaterialTheme.colorScheme.error)
+                }
             )
 
+            val balanceValue = balance.toDoubleOrNull()
+            val balanceError = balance.isNotEmpty() && balanceValue == null
             OutlinedTextField(
                 value = balance,
                 onValueChange = { if (it.all { char -> char.isDigit() || char == '.' || char == '-' }) balance = it },
                 label = { Text("Saldo Inicial") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = balanceError,
+                supportingText = {
+                    if (balanceError) Text("Ingresa un monto válido", color = MaterialTheme.colorScheme.error)
+                }
             )
 
             ExposedDropdownMenuBox(
@@ -157,7 +168,7 @@ fun AddAccountScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotEmpty()
+                enabled = name.isNotBlank() && !balanceError
             ) {
                 Text("Guardar Cuenta", modifier = Modifier.padding(8.dp))
             }

@@ -3,6 +3,7 @@ package com.example.personalaccountant.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,6 +133,88 @@ fun SpendingPieChart(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ComparativeBarChart(
+    income: Double,
+    expense: Double,
+    modifier: Modifier = Modifier
+) {
+    val total = (income + expense).takeIf { it > 0 } ?: 1.0
+    val incomePercentage = (income / total).toFloat()
+    val expensePercentage = (expense / total).toFloat()
+
+    val animIncome = remember { Animatable(0f) }
+    val animExpense = remember { Animatable(0f) }
+
+    LaunchedEffect(income, expense) {
+        animIncome.animateTo(incomePercentage, animationSpec = tween(1000, delayMillis = 100))
+        animExpense.animateTo(expensePercentage, animationSpec = tween(1000, delayMillis = 300))
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Análisis de Flujo",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Income Bar
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Ingresos", modifier = Modifier.width(70.dp), style = MaterialTheme.typography.labelMedium)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animIncome.value.coerceIn(0f, 1f))
+                        .height(16.dp)
+                        .background(com.example.personalaccountant.ui.theme.IncomeGreen, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                )
+            }
+            Text(
+                text = formatCurrencyWithSymbol(income),
+                modifier = Modifier.width(84.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = com.example.personalaccountant.ui.theme.IncomeGreen,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Expense Bar
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Egresos", modifier = Modifier.width(70.dp), style = MaterialTheme.typography.labelMedium)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animExpense.value.coerceIn(0f, 1f))
+                        .height(16.dp)
+                        .background(com.example.personalaccountant.ui.theme.ExpenseRed, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                )
+            }
+            Text(
+                text = formatCurrencyWithSymbol(expense),
+                modifier = Modifier.width(84.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = com.example.personalaccountant.ui.theme.ExpenseRed,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
         }
     }
 }

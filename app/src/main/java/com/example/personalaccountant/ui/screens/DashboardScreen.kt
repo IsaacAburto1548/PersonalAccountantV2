@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -90,6 +92,7 @@ fun DashboardScreen(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val recentTransactions by viewModel.recentTransactions.collectAsStateWithLifecycle()
     val spendingByCategory by viewModel.spendingByCategory.collectAsStateWithLifecycle()
+    val incomeExpenseStat by viewModel.incomeExpenseStat.collectAsStateWithLifecycle()
     val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val selectedAccountIds by viewModel.selectedAccountIds.collectAsStateWithLifecycle()
@@ -123,6 +126,18 @@ fun DashboardScreen(
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     context.startActivity(Intent.createChooser(intent, "Abrir Informe"))
+                }
+                is DashboardUiEvent.CsvGenerated -> {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        event.file
+                    )
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "text/csv")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Abrir CSV"))
                 }
             }
         }
@@ -190,6 +205,9 @@ fun DashboardScreen(
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar seleccionadas", tint = MaterialTheme.colorScheme.onPrimary)
                         }
                     } else {
+                        IconButton(onClick = { viewModel.exportMonthlyCsvReport() }) {
+                            Icon(Icons.Default.List, contentDescription = "Exportar CSV", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
                         IconButton(onClick = { viewModel.exportMonthlyReport() }) {
                             Icon(Icons.Default.PictureAsPdf, contentDescription = "Exportar PDF", tint = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -265,6 +283,25 @@ fun DashboardScreen(
                                 style = MaterialTheme.typography.displayLarge,
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Flow Analysis Bar Chart
+            if (incomeExpenseStat.income > 0 || incomeExpenseStat.expense > 0) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            com.example.personalaccountant.ui.components.ComparativeBarChart(
+                                income = incomeExpenseStat.income,
+                                expense = incomeExpenseStat.expense
                             )
                         }
                     }
