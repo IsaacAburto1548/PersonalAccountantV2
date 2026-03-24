@@ -92,6 +92,7 @@ fun FixedPaymentsScreen(
 ) {
     val fixedRules by viewModel.fixedRules.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -227,6 +228,8 @@ fun FixedPaymentsScreen(
         FixedPaymentDialog(
             rule = null,
             accounts = accounts,
+            categories = categories,
+            onAddCategory = { viewModel.addCustomCategory(it) },
             onDismiss = { showAddDialog = false },
             onSave = { rule ->
                 viewModel.addRule(rule)
@@ -239,6 +242,8 @@ fun FixedPaymentsScreen(
         FixedPaymentDialog(
             rule = editingRule,
             accounts = accounts,
+            categories = categories,
+            onAddCategory = { viewModel.addCustomCategory(it) },
             onDismiss = { editingRule = null },
             onSave = { rule ->
                 viewModel.updateRule(rule)
@@ -331,6 +336,8 @@ fun FixedPaymentCard(
 fun FixedPaymentDialog(
     rule: FixedTransactionRule?,
     accounts: List<com.example.personalaccountant.data.Account>,
+    categories: List<String>,
+    onAddCategory: (String) -> Unit,
     onDismiss: () -> Unit,
     onSave: (FixedTransactionRule) -> Unit
 ) {
@@ -348,23 +355,27 @@ fun FixedPaymentDialog(
     var frequencyType by remember { mutableStateOf(rule?.frequencyType ?: "MONTHLY") }
     var intervalDays by remember { mutableStateOf(rule?.intervalDays?.toString() ?: "7") }
 
-    val categories = listOf("Salarios", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var newCategoryText by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.9f), // Limit to 90% of screen height
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
                     text = if (rule == null) "Nuevo Pago Fijo" else "Editar Pago Fijo",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
@@ -472,6 +483,14 @@ fun FixedPaymentDialog(
                                 }
                             )
                         }
+                        androidx.compose.material3.HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("➕ Añadir nueva categoría", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                            onClick = {
+                                categoryExpanded = false
+                                showAddCategoryDialog = true
+                            }
+                        )
                     }
                 }
 
@@ -563,8 +582,13 @@ fun FixedPaymentDialog(
                     )
                 }
 
+                }
+                
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
@@ -608,6 +632,40 @@ fun FixedPaymentDialog(
                 }
             }
         }
+    }
+
+    if (showAddCategoryDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Nueva Categoría") },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryText,
+                    onValueChange = { newCategoryText = it },
+                    label = { Text("Nombre de categoría") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryText.isNotBlank()) {
+                            onAddCategory(newCategoryText.trim())
+                            category = newCategoryText.trim()
+                            newCategoryText = ""
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 

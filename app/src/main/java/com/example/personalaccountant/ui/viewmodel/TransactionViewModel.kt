@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import com.example.personalaccountant.data.prefs.PreferenceManager
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 sealed class TransactionUiEvent {
@@ -26,7 +28,8 @@ sealed class TransactionUiEvent {
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
-    private val repository: FinanceRepository
+    private val repository: FinanceRepository,
+    private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
     val accounts: StateFlow<List<Account>> = repository.allAccounts
@@ -34,6 +37,16 @@ class TransactionViewModel @Inject constructor(
 
     // Search query
     val searchQuery = MutableStateFlow("")
+
+    private val defaultCategories = listOf("Salarios", "Ingresos Personales", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
+    
+    val categories: StateFlow<List<String>> = preferenceManager.customCategories
+        .map { custom -> (defaultCategories + custom).distinct() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), defaultCategories)
+
+    fun addCustomCategory(category: String) {
+        preferenceManager.addCustomCategory(category)
+    }
 
     // Selected month: null = all time
     private val _selectedMonth = MutableStateFlow<Pair<Int, Int>?>(null) // (month, year)

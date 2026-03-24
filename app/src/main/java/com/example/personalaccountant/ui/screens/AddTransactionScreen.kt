@@ -77,7 +77,10 @@ fun AddTransactionScreen(
     var originalTransaction by remember { mutableStateOf<Transaction?>(null) }
 
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
-    val categories = listOf("Salarios", "Ingresos Personales", "Gastos fijos", "Sinpe Movil", "Gastos Personales", "Mascotas", "Hogar", "Entretenimiento")
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var newCategoryText by remember { mutableStateOf("") }
 
     // Load transaction if editing
     LaunchedEffect(transactionId) {
@@ -246,6 +249,14 @@ fun AddTransactionScreen(
                             }
                         )
                     }
+                    androidx.compose.material3.HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("➕ Añadir nueva categoría", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                        onClick = {
+                            categoryExpanded = false
+                            showAddCategoryDialog = true
+                        }
+                    )
                 }
             }
 
@@ -334,5 +345,39 @@ fun AddTransactionScreen(
                 Text(if (originalTransaction != null) "Actualizar Transacción" else "Guardar Transacción")
             }
         }
+    }
+
+    if (showAddCategoryDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Nueva Categoría") },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryText,
+                    onValueChange = { newCategoryText = it },
+                    label = { Text("Nombre de categoría") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryText.isNotBlank()) {
+                            viewModel.addCustomCategory(newCategoryText.trim())
+                            category = newCategoryText.trim()
+                            newCategoryText = ""
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
