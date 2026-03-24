@@ -195,12 +195,21 @@ fun AddTransactionScreen(
                 }
             }
 
+            val amountValue = amount.toDoubleOrNull()
+            val amountError = amount.isNotEmpty() && (amountValue == null || amountValue <= 0.0)
+
             OutlinedTextField(
                 value = amount,
-                onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) amount = it },
+                onValueChange = { if (it.all { char -> char.isDigit() || char == '.' || char == '-' }) amount = it },
                 label = { Text("Monto") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = amountError,
+                supportingText = {
+                    if (amountError) {
+                        Text("El monto debe ser mayor a 0", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             )
 
             OutlinedTextField(
@@ -320,7 +329,7 @@ fun AddTransactionScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = amount.isNotEmpty() && selectedAccount != null && category.isNotEmpty()
+                enabled = amount.isNotBlank() && !amountError && selectedAccount != null && category.isNotEmpty()
             ) {
                 Text(if (originalTransaction != null) "Actualizar Transacción" else "Guardar Transacción")
             }

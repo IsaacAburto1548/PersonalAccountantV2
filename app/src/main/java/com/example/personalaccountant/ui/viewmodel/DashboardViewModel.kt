@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import com.example.personalaccountant.utils.CsvExporter
 import com.example.personalaccountant.utils.PdfExporter
 import com.example.personalaccountant.data.prefs.PreferenceManager
 import java.io.File
@@ -24,9 +25,11 @@ import javax.inject.Inject
 sealed class DashboardUiEvent {
     data class ShowSnackbar(val message: String) : DashboardUiEvent()
     data class PdfGenerated(val file: File) : DashboardUiEvent()
+    data class CsvGenerated(val file: File) : DashboardUiEvent()
 }
 
 data class SpendingCategory(val category: String, val amount: Double, val percentage: Float)
+data class IncomeExpenseStat(val income: Double, val expense: Double)
 
 sealed class DashboardUiState {
     object Loading : DashboardUiState()
@@ -43,6 +46,7 @@ sealed class DashboardUiState {
 class DashboardViewModel @Inject constructor(
     private val repository: FinanceRepository,
     private val pdfExporter: PdfExporter,
+    private val csvExporter: CsvExporter,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -113,6 +117,14 @@ class DashboardViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val incomeExpenseStat: StateFlow<IncomeExpenseStat> = repository.allTransactions
+        .map { transactions ->
+            val income = transactions.filter { it.type == "INCOME" }.sumOf { it.amount }
+            val expense = transactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+            IncomeExpenseStat(income, expense)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), IncomeExpenseStat(0.0, 0.0))
+
     private val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
     private val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
@@ -140,6 +152,24 @@ class DashboardViewModel @Inject constructor(
                 _uiEvent.send(DashboardUiEvent.PdfGenerated(file))
             } else {
                 _uiEvent.send(DashboardUiEvent.ShowSnackbar("Error al generar el PDF"))
+            }
+        }
+    }
+
+    fun exportMonthlyCsvReport() {
+        viewModelScope.launch {
+            val calendar = Calendar.getInstance()
+            val monthName = calendar.getDisplayName(Calendar.MONTH, Calendar.LONG, java.util.Locale("es", "ES"))
+            val year = calendar.get(Calendar.YEAR)
+            
+            val txs = repository.allTransactions.first() 
+            val accs = repository.allAccounts.first()
+            
+            val file = csvExporter.generateMonthlyReport(txs, accs, monthName ?: "Actual", year)
+            if (file != null) {
+                _uiEvent.send(DashboardUiEvent.CsvGenerated(file))
+            } else {
+                _uiEvent.send(DashboardUiEvent.ShowSnackbar("Error al generar el CSV"))
             }
         }
     }

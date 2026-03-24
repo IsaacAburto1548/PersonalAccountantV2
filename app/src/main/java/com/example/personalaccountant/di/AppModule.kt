@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.personalaccountant.data.AppDatabase
 import com.example.personalaccountant.data.prefs.PreferenceManager
 import com.example.personalaccountant.data.repository.FinanceRepository
+import com.example.personalaccountant.utils.CsvExporter
 import com.example.personalaccountant.utils.PdfExporter
 import dagger.Module
 import dagger.Provides
@@ -26,6 +27,12 @@ object AppModule {
     @Singleton
     fun providePdfExporter(@ApplicationContext context: Context): PdfExporter {
         return PdfExporter(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCsvExporter(@ApplicationContext context: Context): CsvExporter {
+        return CsvExporter(context)
     }
 
     @Provides
