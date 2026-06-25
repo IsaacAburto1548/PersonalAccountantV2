@@ -95,6 +95,9 @@ class MainActivity : ComponentActivity() {
                         composable("add_account") {
                             AddAccountScreen(navController)
                         }
+                        composable("amortization_simulator") {
+                            com.example.personalaccountant.ui.screens.AmortizationSimulatorScreen(navController)
+                        }
                     }
                 }
             }
