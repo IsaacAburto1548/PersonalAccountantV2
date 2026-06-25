@@ -46,4 +46,17 @@ class PreferenceManager @Inject constructor(@ApplicationContext context: Context
             _customCategories.value = current.toList()
         }
     }
+
+    // Simulator Preferences
+    fun getSimLoan(): String = prefs.getString("sim_loan", "170000") ?: "170000"
+    fun setSimLoan(value: String) = prefs.edit().putString("sim_loan", value).apply()
+
+    fun getSimInterest(): String = prefs.getString("sim_interest", "33") ?: "33"
+    fun setSimInterest(value: String) = prefs.edit().putString("sim_interest", value).apply()
+
+    fun getSimTerm(): String = prefs.getString("sim_term", "5") ?: "5"
+    fun setSimTerm(value: String) = prefs.edit().putString("sim_term", value).apply()
+
+    fun getSimSalary(): String = prefs.getString("sim_salary", "500000") ?: "500000"
+    fun setSimSalary(value: String) = prefs.edit().putString("sim_salary", value).apply()
 }
